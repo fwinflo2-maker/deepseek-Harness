@@ -38,7 +38,8 @@ kind: "package-library"
 - **附加上下文**——钩子可以返回额外文本，模型会在下一次请求中看到。
 - **在选定时刻运行**——钩子配置按名称或 pattern 选择触发的事件；缺失、空或 `'*'` pattern 表示该类的每个事件。
 - **失败不停止运行**——除 2 以外的任何退出码都是非阻塞失败：操作继续，失败被记录；完全无法启动的钩子按同样方式处理。
-- **请求运行停止**——钩子可以请求运行暂停（`{"continue": false}`）；该请求会被记录，但没有运行级效果（见已知限制）。
+- **请求运行停止**——钩子可以请求运行停止（`{"continue": false}`）；桥接会以钩子的 `stopReason` 取消当前轮次，轮次以 `hook` 原因结束为 `aborted`。
+- **限制 Stop 钩子的强制继续**——`createStopGuard` 统计一个轮次已被强制继续的次数，让桥接能报告 `stop_hook_active`，并在 Stop 钩子超过上限仍持续阻塞时覆盖它。
 
 ### 钩子运行时你会看到什么
 
@@ -60,7 +61,7 @@ kind: "package-library"
 
 ### 处理流水线
 
-本库是一串单一用途的步骤，每个步骤一个函数：校验 matcher pattern、通过 `dsh-shell` 执行器运行命令、解码结果、把每个匹配 hook 的结果合并为最严格的一个结果，并记录持久的 `hook/*` 事件对。matcher 的 `mode` 参数是两个方言唯一的差异轴——`claude-code` 把 pattern 解释为字面量备选或正则，`codex` 始终解释为未锚定正则。每个步骤都会降级为受控结果而不是抛异常，因此钩子永远不会使调用轮次崩溃：无效正则是运行时的不匹配，执行器拒绝会变成没有退出码的 `HookOutput`，退出码 2 以 stderr 作为原因阻塞，其他失败均不阻塞。合并应用 `deny > ask > allow` 优先级，保持首个 `continue: false` 停止的粘性，并按 hook 顺序累积上下文。脱离运行会被跟踪，因此 `fiber.dispose()` 能达到完全停稳；不变式伴生插件会拒绝未开启轮次外的 `hook/*` 记录。这些步骤位于 [`src/matcher.ts`](src/matcher.ts)、[`src/runner.ts`](src/runner.ts)、[`src/codec.ts`](src/codec.ts)、[`src/merge.ts`](src/merge.ts)、[`src/events.ts`](src/events.ts)、[`src/detached.ts`](src/detached.ts) 与 [`src/invariant.ts`](src/invariant.ts)。
+本库是一串单一用途的步骤，每个步骤一个函数：校验 matcher pattern、通过 `dsh-shell` 执行器运行命令、解码结果、把每个匹配 hook 的结果合并为最严格的一个结果，并记录持久的 `hook/*` 事件对。matcher 的 `mode` 参数是两个方言唯一的差异轴——`claude-code` 把 pattern 解释为字面量备选或正则，`codex` 始终解释为未锚定正则。每个步骤都会降级为受控结果而不是抛异常，因此钩子永远不会使调用轮次崩溃：无效正则是运行时的不匹配，执行器拒绝会变成没有退出码的 `HookOutput`，退出码 2 以 stderr 作为原因阻塞，其他失败均不阻塞。合并应用 `deny > ask > allow` 优先级，保持首个 `continue: false` 停止的粘性，并按 hook 顺序累积上下文。脱离运行会被跟踪，因此 `fiber.dispose()` 能达到完全停稳；stop guard 按轮次统计 Stop 阻塞，让桥接能限制强制继续；不变式伴生插件会拒绝未开启轮次外的 `hook/*` 记录。这些步骤位于 [`src/matcher.ts`](src/matcher.ts)、[`src/runner.ts`](src/runner.ts)、[`src/codec.ts`](src/codec.ts)、[`src/merge.ts`](src/merge.ts)、[`src/events.ts`](src/events.ts)、[`src/detached.ts`](src/detached.ts)、[`src/stop-guard.ts`](src/stop-guard.ts) 与 [`src/invariant.ts`](src/invariant.ts)。
 
 ### `hook/*` 会话事件
 
@@ -88,6 +89,7 @@ kind: "package-library"
 | [`src/merge.ts`](src/merge.ts) | 最严格合并与 `MergedHookOutcome` 类型 |
 | [`src/events.ts`](src/events.ts) | `hook/*` 事件声明、追加辅助函数、stderr 摘要 |
 | [`src/detached.ts`](src/detached.ts) | 脱离运行的完全停稳跟踪 |
+| [`src/stop-guard.ts`](src/stop-guard.ts) | 按轮次统计 Stop 阻塞：`stop_hook_active` 与连续阻塞上限 |
 | [`src/types.ts`](src/types.ts) | `HookOutput`、`MatcherGroup`、`CommandHook` 与 `hook/*` 载荷类型 |
 | [`src/invariant.ts`](src/invariant.ts) | 不变式伴生插件：配对、轮次包裹、方言与时长检查 |
 
@@ -125,7 +127,6 @@ kind: "package-library"
 这些限制描述钩子目前还无法通过共享引擎做到的事情。它们是当前包约束，而非任务积压。
 
 - **`HookOutput.updatedInput` 会被解析但不会应用**——输入改写是已延期的设计一致性问题（见 [pre-tool-input-rewrite Agent Note](../../../.agents/notes/proposed/feature/2026-06-30-pre-tool-input-rewrite.zh.md)）；当 hook 设置它时，桥接会记录并警告。
-- **折叠出的停止没有运行级效果**——`mergeHookOutputs` 把 `continue: false` 折叠为粘性 `stop`，但拦截点没有硬停止原语，因此桥接只记录该停止并保留 hook 的逐点效果。
 - **只有 command 形态会运行**——协议只执行 `{ type: 'command', command, timeout? }`；桥接会解析并跳过其方言定义的其他形态（`http`、`mcp_tool`、`prompt`、`agent`）。
 
 <a id="dev-note"></a>
@@ -136,8 +137,8 @@ kind: "package-library"
 
 本开发备注是维护者的工作上下文：开放问题与尚未决定的探索方向。它明确不具权威性——已交付的行为、限制与既定理由以上文、包代码和相关 Agent Note 为准。
 
-#### 未来：运行级停止
+#### 未来：没有活动 agent 时的停止
 
-请求停止整个运行的 hook（`continue: false`）会被折叠进 `MergedHookOutcome.stop`，但不会在任何地方生效：拦截点缺少硬停止原语，轮次中途的请求改为在 `hook/result` 中记录该停止。运行级停止机制可以让桥接真正应用它；目前尚无设计。
+桥接通过 `agent.cancel({ kind: 'hook' })` 落实 `continue: false`，因此在没有 agent 处于作用域内的 hook 运行（轮次之外的直接工具执行）中，停止会记录在结果里，但没有可取消的对象。这类运行是否需要停止通道仍是开放问题。
 
 </details>

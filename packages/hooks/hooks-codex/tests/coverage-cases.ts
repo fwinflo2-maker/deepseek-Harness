@@ -28,7 +28,7 @@ function hooks(d: string, h: unknown): string {
   writeFileSync(join(d, 'hooks.json'), JSON.stringify({ hooks: h })); return join(d, 'hooks.json')
 }
 
-type HarnessOpts = { stderrSummaryMaxChars?: number; sessionRoot?: string }
+type HarnessOpts = { stderrSummaryMaxChars?: number; maxConsecutiveStopBlocks?: number; sessionRoot?: string }
 async function harness(configPath: string, adapter: MockAdapter, opts: HarnessOpts = {}): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
@@ -390,10 +390,7 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       expect(events(agent).some(e => e.type === 'hook/invoked')).toBe(false)
     })
 
-    it('a {"continue":false} hook is RECORDED as "stop" but does not halt the run (TODO(hook-continue-false))', async () => {
-    // Honoring `continue:false` is deferred — the extension points have no hard-halt
-    // primitive. Assert the LOG records the halt request AND that the run is not
-    // actually halted (the tool still runs, the turn completes).
+    it('a {"continue":false} hook halts the run: the tool does not run and the turn ends aborted by the hook', async () => {
       const d = dir()
       hooks(d, { PreToolUse: [{ hooks: [{ type: 'command', command: sh(d, 's.sh', '#!/usr/bin/env bash\necho \'{"continue":false,"stopReason":"halt"}\'\n') }] }] })
       const adapter = new MockAdapter([toolCallResponse('c1', 'Bash', { command: 'x' }), textResponse('done')])
@@ -403,8 +400,23 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
       const res = events(agent).find(e => e.type === 'hook/result')
-      expect(res?.type === 'hook/result' && res.data.decision).toBe('stop') // recorded
-      expect(ran).toBe(true) // NOT honored: the tool still ran (halt is deferred)
+      expect(res?.type === 'hook/result' && res.data.decision).toBe('stop')
+      expect(ran).toBe(false)
+      const turnEnd = events(agent).findLast(e => e.type === 'turn/end')
+      expect(turnEnd?.type === 'turn/end' && turnEnd.data.reason).toEqual({ kind: 'aborted', reason: { kind: 'hook', reason: 'halt' } })
+      expect(adapter.requests).toHaveLength(1)
+    })
+
+    it('a {"continue":false} hook with no stopReason halts with a point-named reason', async () => {
+      const d = dir()
+      hooks(d, { UserPromptSubmit: [{ hooks: [{ type: 'command', command: sh(d, 's.sh', '#!/usr/bin/env bash\necho \'{"continue":false}\'\n') }] }] })
+      const adapter = new MockAdapter([textResponse('done')])
+      const ctx = await harness(join(d, 'hooks.json'), adapter)
+      const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
+      const turnEnd = events(agent).findLast(e => e.type === 'turn/end')
+      expect(turnEnd?.type === 'turn/end' && turnEnd.data.reason).toEqual({ kind: 'aborted', reason: { kind: 'hook', reason: 'halted by UserPromptSubmit hook' } })
+      expect(adapter.requests).toHaveLength(0)
     })
 
     it('PreToolUse deny with EMPTY stderr uses the default reason (?? right arm)', async () => {
@@ -498,6 +510,33 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
       expect(adapter.requests).toHaveLength(2) // empty-reason block forced continuation
       expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('blocked by Stop hook')
+    })
+
+    it('an unconditionally blocking Stop hook is overridden after maxConsecutiveStopBlocks and sees stop_hook_active', async () => {
+      const d = dir()
+      const cap = join(d, 'payloads')
+      hooks(d, { Stop: [{ hooks: [{ type: 'command', command: sh(d, 's.sh', `#!/usr/bin/env bash\ncat >> "${cap}"; echo >> "${cap}"\nexit 2\n`) }] }] })
+      const adapter = new MockAdapter([textResponse('one'), textResponse('two'), textResponse('three'), textResponse('four'), textResponse('five'), textResponse('six')])
+      const ctx = await harness(join(d, 'hooks.json'), adapter, { maxConsecutiveStopBlocks: 2 })
+      const agent = await ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
+      // Two forced continuations, then the third block is overridden.
+      expect(adapter.requests).toHaveLength(3)
+      const turnEnd = events(agent).findLast(e => e.type === 'turn/end')
+      expect(turnEnd?.type === 'turn/end' && turnEnd.data.reason.kind).toBe('completed')
+      const actives = () => readFileSync(cap, 'utf8').trim().split('\n').map(line => (JSON.parse(line) as { stop_hook_active: boolean }).stop_hook_active)
+      expect(actives()).toEqual([false, true, true])
+      // A fresh turn starts from zero.
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'again' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
+      expect(adapter.requests).toHaveLength(6)
+      expect(actives().slice(3)).toEqual([false, true, true])
+    })
+
+    it('rejects a non-positive maxConsecutiveStopBlocks at load', async () => {
+      const d = dir()
+      hooks(d, {})
+      await expect(harness(join(d, 'hooks.json'), new MockAdapter([]), { maxConsecutiveStopBlocks: 0 }))
+        .rejects.toThrow(/hooks-codex: maxConsecutiveStopBlocks must be a positive integer/)
     })
 
     it('a clean UserPromptSubmit hook that prints PLAIN stdout injects it as context', async () => {
