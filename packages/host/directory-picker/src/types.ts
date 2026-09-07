@@ -24,6 +24,12 @@ export interface DirectoryListing {
   /** The host account's home directory (breadcrumb "Home" rooting). */
   home: string
   /**
+   * The host platform's path separator (`path.sep` where the backend runs),
+   * stamped so clients seed and split typed paths without inferring the
+   * platform from path text — a backslash is a legal POSIX name character.
+   */
+  separator: '/' | '\\'
+  /**
    * Ancestor chain from the filesystem root to the listed directory
    * inclusive; every crumb is a jump target (crumb `hidden` is always false).
    */

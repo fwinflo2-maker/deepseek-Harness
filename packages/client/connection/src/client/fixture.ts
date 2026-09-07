@@ -2294,6 +2294,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         value: {
           path: target,
           home: FIXTURE_HOME,
+          separator: '/',
           crumbs: crumbsOf(target),
           entries: [...children].sort((a, b) => a.localeCompare(b))
             .map(name => ({ name, path: target === '/' ? `/${name}` : `${target}/${name}`, hidden: name.startsWith('.') })),
