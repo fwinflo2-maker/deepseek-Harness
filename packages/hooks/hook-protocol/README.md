@@ -38,7 +38,8 @@ Choose `dsh-hooks-claude-code` or `dsh-hooks-codex` when you have existing Claud
 - **Attach context** — a hook can return extra text that the model sees in the next request.
 - **Run on chosen moments** — a hook config selects which events it fires on by name or pattern; an absent, empty, or `'*'` pattern means every event of that kind.
 - **Fail without stopping the run** — any exit code other than 2 is a non-blocking failure: the action proceeds and the failure is logged, and a hook that cannot be started at all is treated the same way.
-- **Ask the run to stop** — a hook can request that the run halt (`{"continue": false}`); the request is recorded but has no run-level effect (see Known Limitations).
+- **Ask the run to stop** — a hook can request that the run halt (`{"continue": false}`); the bridge cancels the active turn with the hook's `stopReason` and the turn ends `aborted` with a `hook` cause.
+- **Bound Stop-hook continuation** — `createStopGuard` counts the blocks one turn has already forced so a bridge can report `stop_hook_active` and override a Stop hook that keeps blocking past its cap.
 
 ### What you see when hooks run
 
@@ -60,7 +61,7 @@ This section explains the design decisions behind the library and points at the 
 
 ### Processing pipeline
 
-The library is a chain of single-purpose steps, one function each: validate the matcher pattern, run the command through the `dsh-shell` executor, decode the outcome, merge every matched hook's outcome into one most-restrictive result, and record the durable `hook/*` event pair. The matcher's `mode` parameter is the single axis the dialects differ on — `claude-code` interprets a pattern as literal alternatives or a regex, `codex` always as an unanchored regex. Every step degrades to a contained outcome instead of throwing, so a hook can never crash the calling turn: an invalid regex is a non-match, an executor rejection becomes a `HookOutput` with no exit code, exit 2 blocks with stderr as the reason, and every other failure stays non-blocking. Merging applies `deny > ask > allow` precedence, keeps the first `continue: false` stop sticky, and accumulates context in hook order. Detached runs are tracked so `fiber.dispose()` reaches quiescence, and the invariant companion rejects `hook/*` records outside an open turn. The steps live in [`src/matcher.ts`](src/matcher.ts), [`src/runner.ts`](src/runner.ts), [`src/codec.ts`](src/codec.ts), [`src/merge.ts`](src/merge.ts), [`src/events.ts`](src/events.ts), [`src/detached.ts`](src/detached.ts), and [`src/invariant.ts`](src/invariant.ts).
+The library is a chain of single-purpose steps, one function each: validate the matcher pattern, run the command through the `dsh-shell` executor, decode the outcome, merge every matched hook's outcome into one most-restrictive result, and record the durable `hook/*` event pair. The matcher's `mode` parameter is the single axis the dialects differ on — `claude-code` interprets a pattern as literal alternatives or a regex, `codex` always as an unanchored regex. Every step degrades to a contained outcome instead of throwing, so a hook can never crash the calling turn: an invalid regex is a non-match, an executor rejection becomes a `HookOutput` with no exit code, exit 2 blocks with stderr as the reason, and every other failure stays non-blocking. Merging applies `deny > ask > allow` precedence, keeps the first `continue: false` stop sticky, and accumulates context in hook order. Detached runs are tracked so `fiber.dispose()` reaches quiescence, the stop guard counts per-turn Stop blocks so a bridge can cap forced continuation, and the invariant companion rejects `hook/*` records outside an open turn. The steps live in [`src/matcher.ts`](src/matcher.ts), [`src/runner.ts`](src/runner.ts), [`src/codec.ts`](src/codec.ts), [`src/merge.ts`](src/merge.ts), [`src/events.ts`](src/events.ts), [`src/detached.ts`](src/detached.ts), [`src/stop-guard.ts`](src/stop-guard.ts), and [`src/invariant.ts`](src/invariant.ts).
 
 ### `hook/*` session events
 
@@ -88,6 +89,7 @@ The [hook-protocol-lib Agent Note](../../../.agents/notes/implemented/feature/20
 | [`src/merge.ts`](src/merge.ts) | Most-restrictive merge and the `MergedHookOutcome` type |
 | [`src/events.ts`](src/events.ts) | `hook/*` event declaration, append helpers, stderr summary |
 | [`src/detached.ts`](src/detached.ts) | Detached-run quiescence tracking |
+| [`src/stop-guard.ts`](src/stop-guard.ts) | Per-turn Stop block counting: `stop_hook_active` and the consecutive-block cap |
 | [`src/types.ts`](src/types.ts) | `HookOutput`, `MatcherGroup`, `CommandHook`, and the `hook/*` payload types |
 | [`src/invariant.ts`](src/invariant.ts) | Invariant companion: pairing, turn enclosure, dialect, and duration checks |
 
@@ -125,7 +127,6 @@ No direct invalidation; the named consumers own any request-prefix changes.
 These limits describe what hooks cannot do through the shared engine yet. They are current package constraints, not a task backlog.
 
 - **`HookOutput.updatedInput` is parsed but not honored** — input rewrite is a deferred consistency-design problem ([the pre-tool-input-rewrite Agent Note](../../../.agents/notes/proposed/feature/2026-06-30-pre-tool-input-rewrite.md)); a bridge logs and warns when a hook sets it.
-- **A folded halt has no run-level effect** — `mergeHookOutputs` folds `continue: false` into a sticky `stop`, but the interception points have no hard-halt primitive, so a bridge records the halt and keeps the hook's per-point effect.
 - **Only the command-hook shape runs** — the protocol executes `{ type: 'command', command, timeout? }`; a bridge parses-and-skips the other shapes its dialect defines (`http`, `mcp_tool`, `prompt`, `agent`).
 
 <a id="dev-note"></a>
@@ -136,8 +137,8 @@ These limits describe what hooks cannot do through the shared engine yet. They a
 
 This Dev Note is working context for maintainers: open questions and directions that are not decided. It is explicitly non-authoritative — shipped behavior, limits, and accepted rationale live in the sections above, the package code, and the linked Agent Notes.
 
-#### Future: run-level halt
+#### Future: halt without a live agent
 
-A hook that asks to halt the whole run (`continue: false`) is folded into `MergedHookOutcome.stop` but not applied anywhere: the interception points lack a hard-halt primitive, and mid-turn requests record the halt in `hook/result` instead. A run-level halt mechanism would let the bridges honor it; no design exists yet.
+A bridge honors `continue: false` through `agent.cancel({ kind: 'hook' })`, so a hook run with no agent in scope (a direct tool execution outside a turn) records the halt in its outcome but has nothing to cancel. Whether such runs need a halt channel is open.
 
 </details>

@@ -23,6 +23,8 @@ const HOME = '/home/u'
 const homeListing: DirectoryListing = {
   path: HOME,
   home: HOME,
+
+  separator: '/',
   crumbs: [{ name: '/', path: '/', hidden: false }, { name: 'u', path: HOME, hidden: false }],
   entries: [{ name: 'Documents', path: `${HOME}/Documents`, hidden: false }],
   truncated: false,

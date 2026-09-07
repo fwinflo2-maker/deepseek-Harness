@@ -816,10 +816,17 @@ export interface Config {
   defaultTimeoutMs?: number
   /** Character cap for the `hook/result` event's persisted stderr summary. */
   stderrSummaryMaxChars?: number
+  /**
+   * How many times one turn may be force-continued by a blocking `Stop` hook
+   * before a further block is overridden and the turn closes (Claude Code
+   * overrides after 8). The payload's `stop_hook_active` tells the hook a
+   * block already forced this turn on.
+   */
+  maxConsecutiveStopBlocks?: number
 }
 ```
 
-Source: [`packages/hooks/hooks-claude-code/src/index.ts:45`](../packages/hooks/hooks-claude-code/src/index.ts)
+Source: [`packages/hooks/hooks-claude-code/src/index.ts:47`](../packages/hooks/hooks-claude-code/src/index.ts)
 
 <a id="deepseek-aidsh-hooks-codex"></a>
 
@@ -843,10 +850,16 @@ export interface Config {
   defaultTimeoutMs?: number
   /** Character cap for the `hook/result` event's persisted stderr summary. */
   stderrSummaryMaxChars?: number
+  /**
+   * How many times one turn may be force-continued by a blocking `Stop` hook
+   * before a further block is overridden and the turn closes. The payload's
+   * `stop_hook_active` tells the hook a block already forced this turn on.
+   */
+  maxConsecutiveStopBlocks?: number
 }
 ```
 
-Source: [`packages/hooks/hooks-codex/src/index.ts:44`](../packages/hooks/hooks-codex/src/index.ts)
+Source: [`packages/hooks/hooks-codex/src/index.ts:46`](../packages/hooks/hooks-codex/src/index.ts)
 
 <a id="deepseek-aidsh-host-directory-picker-browse"></a>
 

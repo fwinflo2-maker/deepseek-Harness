@@ -22,6 +22,8 @@ function listingFor(path?: string): DirectoryListing {
     [HOME]: {
       path: HOME,
       home: HOME,
+
+      separator: '/',
       crumbs: [
         { name: '/', path: '/', hidden: false },
         { name: 'home', path: '/home', hidden: false },
@@ -36,6 +38,8 @@ function listingFor(path?: string): DirectoryListing {
     '/': {
       path: '/',
       home: HOME,
+
+      separator: '/',
       crumbs: [{ name: '/', path: '/', hidden: false }],
       entries: [{ name: 'home', path: '/home', hidden: false }],
       truncated: false,
@@ -43,6 +47,8 @@ function listingFor(path?: string): DirectoryListing {
     [`${HOME}/.config`]: {
       path: `${HOME}/.config`,
       home: HOME,
+
+      separator: '/',
       crumbs: [
         { name: '/', path: '/', hidden: false },
         { name: 'home', path: '/home', hidden: false },
@@ -55,6 +61,8 @@ function listingFor(path?: string): DirectoryListing {
     [DOCS]: {
       path: DOCS,
       home: HOME,
+
+      separator: '/',
       crumbs: [
         { name: '/', path: '/', hidden: false },
         { name: 'home', path: '/home', hidden: false },
@@ -67,6 +75,8 @@ function listingFor(path?: string): DirectoryListing {
     [HARNESS]: {
       path: HARNESS,
       home: HOME,
+
+      separator: '/',
       crumbs: [
         { name: '/', path: '/', hidden: false },
         { name: 'home', path: '/home', hidden: false },
@@ -515,6 +525,8 @@ describe('DirectoryBrowser', () => {
     const winRoot: DirectoryListing = {
       path: ROOT,
       home: ROOT,
+
+      separator: '\\',
       crumbs: [{ name: 'C:\\', path: ROOT, hidden: false }],
       entries: [{ name: 'Users', path: 'C:\\Users', hidden: false }],
       truncated: false,
@@ -522,6 +534,8 @@ describe('DirectoryBrowser', () => {
     const winUsers: DirectoryListing = {
       path: TYPED,
       home: ROOT,
+
+      separator: '\\',
       crumbs: [{ name: 'C:\\', path: ROOT, hidden: false }, { name: 'users', path: TYPED, hidden: false }],
       entries: [],
       truncated: false,
@@ -772,6 +786,8 @@ describe('DirectoryBrowser', () => {
       [ROOT]: {
         path: ROOT,
         home: ROOT,
+
+        separator: '/',
         crumbs: chain,
         entries: [{ name: 'mid', path: MID, hidden: false }, { name: 'other', path: `${ROOT}/other`, hidden: false }],
         truncated: false,
@@ -779,6 +795,8 @@ describe('DirectoryBrowser', () => {
       [MID]: {
         path: MID,
         home: ROOT,
+
+        separator: '/',
         crumbs: [...chain, { name: 'mid', path: MID, hidden: false }],
         entries: [{ name: 'leaf', path: LEAF, hidden: false }, { name: 'sibling', path: `${MID}/sibling`, hidden: false }],
         truncated: false,
@@ -786,6 +804,8 @@ describe('DirectoryBrowser', () => {
       [LEAF]: {
         path: LEAF,
         home: ROOT,
+
+        separator: '/',
         crumbs: [...chain, { name: 'mid', path: MID, hidden: false }, { name: 'leaf', path: LEAF, hidden: false }],
         entries: [],
         truncated: false,
@@ -1109,6 +1129,8 @@ describe('DirectoryBrowser', () => {
     const windowsListing: DirectoryListing = {
       path: ROOT,
       home: ROOT,
+
+      separator: '\\',
       crumbs: [{ name: 'C:\\', path: ROOT, hidden: false }],
       entries: [
         { name: 'Program Files', path: `${ROOT}Program Files`, hidden: false },
@@ -1211,6 +1233,8 @@ describe('DirectoryBrowser', () => {
     const outside: DirectoryListing = {
       path: '/srv/data',
       home: HOME,
+
+      separator: '/',
       crumbs: [
         { name: '/', path: '/', hidden: false },
         { name: 'srv', path: '/srv', hidden: false },
@@ -1263,7 +1287,7 @@ describe('DirectoryBrowser', () => {
     // offer a second create against a target the pending relist/select
     // sequence is about to change.
     const fresh: DirectoryListing = {
-      path: `${HOME}/fresh`, home: HOME,
+      path: `${HOME}/fresh`, home: HOME, separator: '/',
       crumbs: [...listingFor(HOME).crumbs, { name: 'fresh', path: `${HOME}/fresh`, hidden: false }],
       entries: [],
       truncated: false,
@@ -1554,7 +1578,7 @@ describe('DirectoryBrowser', () => {
     b.listDirectory.mockImplementation(async (path?: string) => {
       if (path === `${DOCS}/fresh`) {
         return {
-          path: `${DOCS}/fresh`, home: HOME,
+          path: `${DOCS}/fresh`, home: HOME, separator: '/',
           crumbs: [...listingFor(DOCS).crumbs, { name: 'fresh', path: `${DOCS}/fresh`, hidden: false }],
           entries: [],
           truncated: false,
@@ -1689,7 +1713,7 @@ describe('DirectoryBrowser', () => {
   })
 
   it('names the create target by its path when the level reports no crumbs', async () => {
-    const bare: DirectoryListing = { path: '/srv/data', home: HOME, crumbs: [], entries: [], truncated: false }
+    const bare: DirectoryListing = { path: '/srv/data', home: HOME, separator: '/', crumbs: [], entries: [], truncated: false }
     mount({ listDirectory: vi.fn(async () => bare) })
     await waitFor(() => { expect(screen.getByRole('button', { name: 'browser.newFolder' })).toBeTruthy() })
     await waitFor(() => {
