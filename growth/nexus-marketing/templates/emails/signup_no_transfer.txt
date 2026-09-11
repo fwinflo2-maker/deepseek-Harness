@@ -1,0 +1,54 @@
+### Séquence : signup_no_transfer
+### Déclencheur : compte créé, aucun transfert exécuté après 24h
+### Objectif : convertir l'inscription en premier transfert
+
+---
+[EMAIL 1 — J+1]
+Objet: {{first_name}}, votre premier transfert n'attend plus que vous
+
+Bonjour {{first_name}},
+
+Vous avez créé votre compte Nexus — bienvenue.
+
+Il ne vous reste qu'une étape : déclarer votre première intention de transfert.
+Nexus compare en temps réel les meilleures routes (taux, frais, vitesse) et
+exécute automatiquement la meilleure option pour vous.
+
+👉 Faire mon premier transfert : {{site_url}}/register
+
+À très vite,
+L'équipe Nexus
+
+---
+[EMAIL 2 — J+3]
+Objet: Combien vous coûte votre transfert actuel ?
+
+Bonjour {{first_name}},
+
+Beaucoup de nos utilisateurs sont surpris en voyant l'écart entre ce qu'ils
+payaient avant (banque, Western Union...) et ce que propose Nexus.
+
+Testez-le vous-même : indiquez le montant et la destination, on vous montre
+en quelques secondes la meilleure route disponible — sans engagement.
+
+👉 Voir mon devis : {{site_url}}/register
+
+L'équipe Nexus
+
+---
+[EMAIL 3 — J+7]
+Objet: Une dernière chose avant de vous laisser tranquille
+
+Bonjour {{first_name}},
+
+On ne veut pas vous spammer — ce sera notre dernier message sur ce sujet.
+
+Si vous avez encore besoin d'envoyer de l'argent à l'international, Nexus
+reste disponible pour comparer et exécuter automatiquement la meilleure
+route. Zéro custody, transparence totale sur les frais avant chaque envoi.
+
+👉 {{site_url}}/register
+
+Si ce n'est pas le bon moment, pas de souci — vous pourrez toujours revenir.
+
+L'équipe Nexus

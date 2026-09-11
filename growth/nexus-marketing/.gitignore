@@ -1,0 +1,7 @@
+.env
+content/*.md
+!content/.gitkeep
+emails_drafts/*.md
+!emails_drafts/.gitkeep
+__pycache__/
+*.pyc

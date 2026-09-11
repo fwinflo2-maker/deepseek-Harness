@@ -1,0 +1,5 @@
+email,first_name,segment,signup_date,last_quote_date,last_transfer_date,amount,destination
+awa.diop@example.com,Awa,signup_no_transfer,2026-09-10,,,,
+jean.kouassi@example.com,Jean,abandoned_quote,2026-09-08,2026-09-11,,500,Côte d'Ivoire
+marie.mbeki@example.com,Marie,dormant_user,2026-06-01,,2026-08-01,,RD Congo
+paul.nguema@example.com,Paul,newsletter_lead,,,,,

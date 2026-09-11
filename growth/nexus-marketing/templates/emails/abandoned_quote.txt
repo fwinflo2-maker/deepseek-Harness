@@ -1,0 +1,35 @@
+### Séquence : abandoned_quote
+### Déclencheur : un devis (Quote) a été demandé mais pas exécuté sous 2h
+### Objectif : lever l'hésitation, créer une urgence légitime sur le taux
+
+---
+[EMAIL 1 — H+2]
+Objet: Votre devis est prêt — le taux peut évoluer
+
+Bonjour {{first_name}},
+
+Vous avez comparé les routes pour votre transfert de {{amount}} vers
+{{destination}}. La meilleure route identifiée par Nexus reste disponible,
+mais les taux de change évoluent en continu.
+
+👉 Finaliser mon transfert : {{site_url}}/login
+
+L'équipe Nexus
+
+---
+[EMAIL 2 — H+24]
+Objet: On a gardé votre meilleure route au chaud
+
+Bonjour {{first_name}},
+
+Votre devis pour {{amount}} vers {{destination}} est toujours accessible.
+Rappel de ce que Nexus vous garantit avant toute confirmation :
+- le montant exact reçu par le destinataire
+- les frais, en toute transparence
+- le délai estimé
+
+Aucune surprise après coup.
+
+👉 Reprendre là où vous vous étiez arrêté : {{site_url}}/login
+
+L'équipe Nexus

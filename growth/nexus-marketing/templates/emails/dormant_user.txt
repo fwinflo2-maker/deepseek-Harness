@@ -1,0 +1,31 @@
+### Séquence : dormant_user
+### Déclencheur : dernier transfert exécuté il y a plus de 30 jours
+### Objectif : réactiver + activer le parrainage (LTV)
+
+---
+[EMAIL 1 — J+30]
+Objet: Ça fait un moment, {{first_name}} !
+
+Bonjour {{first_name}},
+
+Votre dernier transfert avec Nexus remonte à un moment déjà. Si vous avez
+un nouvel envoi à faire, on a probablement une route encore plus rapide ou
+moins chère à vous proposer aujourd'hui qu'à l'époque.
+
+👉 Nouveau transfert : {{site_url}}/login
+
+L'équipe Nexus
+
+---
+[EMAIL 2 — J+40]
+Objet: Parrainez un proche, gagnez tous les deux
+
+Bonjour {{first_name}},
+
+Vous connaissez sûrement quelqu'un qui envoie régulièrement de l'argent à
+l'international. Partagez votre lien de parrainage : votre filleul profite
+de Nexus, et vous êtes récompensé sur son premier transfert.
+
+👉 Obtenir mon lien de parrainage : {{site_url}}/login
+
+L'équipe Nexus

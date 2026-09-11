@@ -1,0 +1,61 @@
+### Séquence : newsletter_lead
+### Déclencheur : email capturé sur le site sans création de compte
+### Objectif : éduquer puis convertir en inscription
+
+---
+[EMAIL 1 — J+0]
+Objet: Merci de votre intérêt pour Nexus
+
+Bonjour {{first_name}},
+
+Merci de vous être inscrit·e. Nexus est une plateforme d'orchestration
+financière : vous déclarez une intention de transfert, on compare les
+routes disponibles en temps réel et on exécute automatiquement la
+meilleure — sans jamais détenir vos fonds.
+
+Dans les prochains jours, on vous montre concrètement comment ça marche.
+
+L'équipe Nexus
+
+---
+[EMAIL 2 — J+3]
+Objet: Pourquoi "zéro custody" change tout
+
+Bonjour {{first_name}},
+
+Une inquiétude fréquente avec les plateformes de transfert : "qui détient
+mon argent pendant le trajet ?" Chez Nexus, la réponse est simple : jamais
+nous. Vos fonds restent chez des infrastructures régulées, et chaque
+mouvement est enregistré dans un ledger double-entrée, traçable.
+
+👉 Découvrir le fonctionnement complet : {{site_url}}/#produit
+
+L'équipe Nexus
+
+---
+[EMAIL 3 — J+7]
+Objet: Un comparatif qui parle de lui-même
+
+Bonjour {{first_name}},
+
+On a comparé les frais réels de plusieurs services pour un transfert type.
+L'écart est souvent plus grand qu'on ne le pense — et Nexus vous montre ce
+comparatif avant chaque envoi, pas après.
+
+👉 Comparer mon prochain transfert : {{site_url}}/register
+
+L'équipe Nexus
+
+---
+[EMAIL 4 — J+14]
+Objet: Prêt·e à essayer Nexus ?
+
+Bonjour {{first_name}},
+
+Créer un compte prend moins de deux minutes, et votre premier devis est
+gratuit et sans engagement.
+
+👉 Créer mon compte : {{site_url}}/register
+
+À bientôt,
+L'équipe Nexus
